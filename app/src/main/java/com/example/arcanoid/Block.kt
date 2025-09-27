@@ -2,7 +2,8 @@ package com.example.arcanoid
 
 enum class BlockType {
     NORMAL,
-    BONUS_EXTRA_BALL
+    BONUS_EXTRA_BALL,
+    BONUS_WIDER_PADDLE
 }
 
 data class Block(

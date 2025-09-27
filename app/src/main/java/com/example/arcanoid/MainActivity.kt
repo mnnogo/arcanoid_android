@@ -29,16 +29,17 @@ import kotlin.random.Random
 
 // ракетка
 const val PADDLE_INIT_X = 400f
-const val PADDLE_WIDTH = 200f
+const val PADDLE_INIT_WIDTH = 200f
 const val PADDLE_HEIGHT = 30f
-const val PADDLE_BOTTOM_PADDING = 300f
+const val PADDLE_BOTTOM_PADDING = 400f
 val PADDLE_COLOR = Color.Cyan
 
 // мяч
 const val BALL_RADIUS = 20f
 val BALL_COLOR = Color.Magenta
 val BALL_INIT_POSITION = Offset(500f, 1500f)
-val BALL_INIT_VELOCITY = Offset(10f, -10f)
+val BALL_INIT_VELOCITY = Offset(12f, -12f)
+const val NEW_BALL_Y_OFFSET = 250f
 
 // блоки
 const val BLOCK_WIDTH = 100f
@@ -49,11 +50,13 @@ const val BLOCK_HORIZONTAL_SPACING = 30f
 const val BLOCK_VERTICAL_SPACING = 30f
 const val BLOCK_MARGIN_TOP = 50f
 const val BLOCK_MARGIN_LEFT = 100f
-val NORMAL_BLOCK_COLOR = Color.Cyan
+val NORMAL_BLOCK_COLOR = Color(0xFF00BCD4)
 val BONUS_EXTRA_BALL_BLOCK_COLOR = Color.Magenta
+val BONUS_WIDER_PADDLE_COLOR = Color.Green
 
 // вероятности появления блоков
-const val CHANCE_EXTRA_BALL_BLOCK = 0.2f
+const val CHANCE_EXTRA_BALL_BLOCK = 0.15f
+const val CHANCE_WIDER_PADDLE_BLOCK = 0.1f
 
 
 class MainActivity : ComponentActivity() {
@@ -77,6 +80,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     /*
     * инициализация начального состояния (state) поля
     */
+    var paddleWidth = PADDLE_INIT_WIDTH
     var canvasWidth by remember { mutableFloatStateOf(0f) }
     var canvasHeight by remember { mutableFloatStateOf(0f) }
     var paddleX by remember { mutableFloatStateOf(PADDLE_INIT_X) }
@@ -90,10 +94,10 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             for (row in 0 until BLOCK_ROWS) {
                 for (col in 0 until BLOCK_COLUMNS) {
                     // случайное определение типа блока
-                    val type = if (Random.nextFloat() < CHANCE_EXTRA_BALL_BLOCK) {
-                        BlockType.BONUS_EXTRA_BALL
-                    } else {
-                        BlockType.NORMAL
+                    val type = when {
+                        Random.nextFloat() < CHANCE_EXTRA_BALL_BLOCK -> BlockType.BONUS_EXTRA_BALL
+                        Random.nextFloat() < CHANCE_WIDER_PADDLE_BLOCK -> BlockType.BONUS_WIDER_PADDLE
+                        else -> BlockType.NORMAL
                     }
                     add(
                         Block(
@@ -122,8 +126,8 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
 
                     // проверка выхода за границы
                     if (paddleX < 0f) paddleX = 0f
-                    if (paddleX > canvasWidth - PADDLE_WIDTH) {
-                        paddleX = canvasWidth - PADDLE_WIDTH
+                    if (paddleX > canvasWidth - paddleWidth) {
+                        paddleX = canvasWidth - paddleWidth
                     }
                 }
             }
@@ -135,7 +139,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
         drawRect(
             color = PADDLE_COLOR,
             topLeft = Offset(paddleX, canvasHeight - PADDLE_BOTTOM_PADDING),
-            size = Size(PADDLE_WIDTH, PADDLE_HEIGHT)
+            size = Size(paddleWidth, PADDLE_HEIGHT)
         )
 
         // отрисовка мячей
@@ -153,6 +157,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                 val blockColor = when (block.type) {
                     BlockType.NORMAL -> NORMAL_BLOCK_COLOR
                     BlockType.BONUS_EXTRA_BALL -> BONUS_EXTRA_BALL_BLOCK_COLOR
+                    BlockType.BONUS_WIDER_PADDLE -> BONUS_WIDER_PADDLE_COLOR
                 }
                 drawRect(
                     color = blockColor,
@@ -186,7 +191,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                 if (ball.position.y + BALL_RADIUS >= paddleTop &&
                     ball.position.y - BALL_RADIUS <= paddleBottom &&
                     ball.position.x >= paddleX &&
-                    ball.position.x <= paddleX + PADDLE_WIDTH
+                    ball.position.x <= paddleX + paddleWidth
                 ) {
                     ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
                 }
@@ -206,10 +211,12 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                             if (block.type == BlockType.BONUS_EXTRA_BALL) {
                                 newBalls.add(
                                     Ball(
-                                        position = ball.position.copy(y = ball.position.y + 150f),
+                                        position = ball.position.copy(y = ball.position.y + NEW_BALL_Y_OFFSET),
                                         velocity = Offset(-ball.velocity.x, ball.velocity.y)
                                     )
                                 )
+                            } else if (block.type == BlockType.BONUS_WIDER_PADDLE) {
+                                paddleWidth += 50f // увеличиваем ширину
                             }
                         }
                     }
