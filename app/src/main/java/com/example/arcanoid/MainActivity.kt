@@ -1,5 +1,6 @@
 package com.example.arcanoid
 
+import android.graphics.Paint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,25 +8,41 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.arcanoid.ui.theme.ArcanoidTheme
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+
+// текст с очками
+const val SCORE_TOP_PADDING = 100f
+const val SCORE_LEFT_PADDING = 50f
 
 // ракетка
 const val PADDLE_INIT_X = 400f
@@ -33,6 +50,7 @@ const val PADDLE_INIT_WIDTH = 200f
 const val PADDLE_HEIGHT = 30f
 const val PADDLE_BOTTOM_PADDING = 400f
 val PADDLE_COLOR = Color.Cyan
+const val WIDER_PADDLE_BONUS = 50f
 
 // мяч
 const val BALL_RADIUS = 20f
@@ -48,7 +66,7 @@ const val BLOCK_ROWS = 10
 const val BLOCK_COLUMNS = 7
 const val BLOCK_HORIZONTAL_SPACING = 30f
 const val BLOCK_VERTICAL_SPACING = 30f
-const val BLOCK_MARGIN_TOP = 50f
+const val BLOCK_MARGIN_TOP = 150f
 const val BLOCK_MARGIN_LEFT = 100f
 val NORMAL_BLOCK_COLOR = Color(0xFF00BCD4)
 val BONUS_EXTRA_BALL_BLOCK_COLOR = Color.Magenta
@@ -57,7 +75,6 @@ val BONUS_WIDER_PADDLE_COLOR = Color.Green
 // вероятности появления блоков
 const val CHANCE_EXTRA_BALL_BLOCK = 0.15f
 const val CHANCE_WIDER_PADDLE_BLOCK = 0.1f
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,91 +97,103 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     /*
     * инициализация начального состояния (state) поля
     */
+    var score by remember { mutableIntStateOf(0) }
+    var isGameOver by remember { mutableStateOf(false) }
+
     var paddleWidth = PADDLE_INIT_WIDTH
     var canvasWidth by remember { mutableFloatStateOf(0f) }
     var canvasHeight by remember { mutableFloatStateOf(0f) }
     var paddleX by remember { mutableFloatStateOf(PADDLE_INIT_X) }
-    var balls = remember {
-        mutableStateListOf(
-            Ball(position = BALL_INIT_POSITION, velocity = BALL_INIT_VELOCITY)
-        )
+    val balls = remember { mutableStateListOf(Ball( BALL_INIT_POSITION, BALL_INIT_VELOCITY))}
+    val blocks = remember { mutableStateListOf<Block>().apply { initializeBlocks(this) } }
+
+    fun restartGame() {
+        score = 0
+        isGameOver = false
+        paddleWidth = PADDLE_INIT_WIDTH
+        paddleX = PADDLE_INIT_X
+        balls.clear()
+        balls.add(Ball(BALL_INIT_POSITION, BALL_INIT_VELOCITY))
+        blocks.clear()
+        initializeBlocks(blocks)
     }
-    val blocks = remember {
-        mutableStateListOf<Block>().apply {
-            for (row in 0 until BLOCK_ROWS) {
-                for (col in 0 until BLOCK_COLUMNS) {
-                    // случайное определение типа блока
-                    val type = when {
-                        Random.nextFloat() < CHANCE_EXTRA_BALL_BLOCK -> BlockType.BONUS_EXTRA_BALL
-                        Random.nextFloat() < CHANCE_WIDER_PADDLE_BLOCK -> BlockType.BONUS_WIDER_PADDLE
-                        else -> BlockType.NORMAL
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+
+                        // смещение ракетки по X
+                        paddleX += dragAmount.x
+
+                        // проверка выхода за границы
+                        if (paddleX < 0f) paddleX = 0f
+                        if (paddleX > canvasWidth - paddleWidth) {
+                            paddleX = canvasWidth - paddleWidth
+                        }
                     }
-                    add(
-                        Block(
-                            x = col * (BLOCK_WIDTH + BLOCK_HORIZONTAL_SPACING) + BLOCK_MARGIN_LEFT,
-                            y = row * (BLOCK_HEIGHT + BLOCK_VERTICAL_SPACING) + BLOCK_MARGIN_TOP,
-                            width = BLOCK_WIDTH,
-                            height = BLOCK_HEIGHT,
-                            type = type
-                        )
+                }
+        ) {
+            canvasWidth = size.width
+            canvasHeight = size.height
+
+            // отрисовка ракетки
+            drawRect(
+                color = PADDLE_COLOR,
+                topLeft = Offset(paddleX, canvasHeight - PADDLE_BOTTOM_PADDING),
+                size = Size(paddleWidth, PADDLE_HEIGHT)
+            )
+
+            // отрисовка мячей
+            balls.forEach { ball ->
+                drawCircle(
+                    color = BALL_COLOR,
+                    radius = BALL_RADIUS,
+                    center = ball.position
+                )
+            }
+
+            // отрисовка блоков
+            blocks.forEach { block ->
+                if (!block.isDestroyed) {
+                    val blockColor = when (block.type) {
+                        BlockType.NORMAL -> NORMAL_BLOCK_COLOR
+                        BlockType.BONUS_EXTRA_BALL -> BONUS_EXTRA_BALL_BLOCK_COLOR
+                        BlockType.BONUS_WIDER_PADDLE -> BONUS_WIDER_PADDLE_COLOR
+                    }
+                    drawRect(
+                        color = blockColor,
+                        topLeft = Offset(block.x, block.y),
+                        size = Size(block.width, block.height)
                     )
                 }
             }
-        }
-    }
 
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-
-                    // смещение ракетки по X
-                    paddleX += dragAmount.x
-
-                    // проверка выхода за границы
-                    if (paddleX < 0f) paddleX = 0f
-                    if (paddleX > canvasWidth - paddleWidth) {
-                        paddleX = canvasWidth - paddleWidth
+            // отрисовка очков
+            drawContext.canvas.nativeCanvas.apply {
+                drawText(
+                    "Счет: $score",
+                    SCORE_LEFT_PADDING,
+                    SCORE_TOP_PADDING,
+                    Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 60f
+                        isAntiAlias = true
                     }
-                }
-            }
-    ) {
-        canvasWidth = size.width
-        canvasHeight = size.height
-
-        // отрисовка ракетки
-        drawRect(
-            color = PADDLE_COLOR,
-            topLeft = Offset(paddleX, canvasHeight - PADDLE_BOTTOM_PADDING),
-            size = Size(paddleWidth, PADDLE_HEIGHT)
-        )
-
-        // отрисовка мячей
-        balls.forEach { ball ->
-            drawCircle(
-                color = BALL_COLOR,
-                radius = BALL_RADIUS,
-                center = ball.position
-            )
-        }
-
-        // отрисовка блоков
-        blocks.forEach { block ->
-            if (!block.isDestroyed) {
-                val blockColor = when (block.type) {
-                    BlockType.NORMAL -> NORMAL_BLOCK_COLOR
-                    BlockType.BONUS_EXTRA_BALL -> BONUS_EXTRA_BALL_BLOCK_COLOR
-                    BlockType.BONUS_WIDER_PADDLE -> BONUS_WIDER_PADDLE_COLOR
-                }
-                drawRect(
-                    color = blockColor,
-                    topLeft = Offset(block.x, block.y),
-                    size = Size(block.width, block.height)
                 )
             }
+        }
+
+        if (isGameOver) {
+            GameOverPanel(
+                score = score,
+                bestScore = 0,
+                onRestart = { restartGame() }
+            )
         }
     }
 
@@ -206,6 +235,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                         if (hit) {
                             block.isDestroyed = true
                             ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
+                            score++
 
                             // добавление нового мяча при столкновении с бонусным
                             if (block.type == BlockType.BONUS_EXTRA_BALL) {
@@ -216,13 +246,18 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                                     )
                                 )
                             } else if (block.type == BlockType.BONUS_WIDER_PADDLE) {
-                                paddleWidth += 50f // увеличиваем ширину
+                                paddleWidth += WIDER_PADDLE_BONUS
                             }
                         }
                     }
                 }
             }
             balls.addAll(newBalls)
+
+            // проверка окончания игры
+            if (blocks.all { it.isDestroyed } || balls.all { it.position.y - BALL_RADIUS > canvasHeight }) {
+                isGameOver = true
+            }
 
             delay(16L)
         }
@@ -234,5 +269,73 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
 fun ArkanoidGamePreview() {
     ArcanoidTheme {
         ArkanoidGameScreen()
+    }
+}
+
+@Composable
+fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xAA000000)) // полупрозрачный фон
+    ) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Игра окончена",
+                color = Color(0xFFFF7043),
+                fontSize = 40.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            Text(
+                "Ваш счёт: $score",
+                color = Color.White,
+                fontSize = 30.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            Text(
+                "Лучший счёт: $bestScore",
+                color = Color.White,
+                fontSize = 30.sp,
+                modifier = Modifier.padding(bottom = 20.dp)
+            )
+            Button(
+                onClick = onRestart,
+                modifier = Modifier.padding(top = 8.dp),
+                shape = RectangleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00FFFF)
+                )
+            ) {
+                Text(
+                    "Начать сначала",
+                    color = Color.Black,
+                    fontSize = 20.sp
+                )
+            }
+        }
+    }
+}
+
+fun initializeBlocks(list: MutableList<Block>) {
+    for (row in 0 until BLOCK_ROWS) {
+        for (col in 0 until BLOCK_COLUMNS) {
+            val type = when {
+                Random.nextFloat() < CHANCE_EXTRA_BALL_BLOCK -> BlockType.BONUS_EXTRA_BALL
+                Random.nextFloat() < CHANCE_WIDER_PADDLE_BLOCK -> BlockType.BONUS_WIDER_PADDLE
+                else -> BlockType.NORMAL
+            }
+            list.add(
+                Block(
+                    x = col * (BLOCK_WIDTH + BLOCK_HORIZONTAL_SPACING) + BLOCK_MARGIN_LEFT,
+                    y = row * (BLOCK_HEIGHT + BLOCK_VERTICAL_SPACING) + BLOCK_MARGIN_TOP,
+                    width = BLOCK_WIDTH,
+                    height = BLOCK_HEIGHT,
+                    type = type
+                )
+            )
+        }
     }
 }
