@@ -8,10 +8,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -105,8 +112,9 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     var score by remember { mutableIntStateOf(0) }
     val bestScore by ScoreManager.getBestScore(context).collectAsState(initial = 0)
     var isGameOver by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
 
-    var paddleWidth by remember {mutableFloatStateOf(PADDLE_INIT_WIDTH)}
+    var paddleWidth by remember { mutableFloatStateOf(PADDLE_INIT_WIDTH) }
     var canvasWidth by remember { mutableFloatStateOf(0f) }
     var canvasHeight by remember { mutableFloatStateOf(0f) }
     var paddleX by remember { mutableFloatStateOf(PADDLE_INIT_X) }
@@ -116,6 +124,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     fun restartGame() {
         score = 0
         isGameOver = false
+        isPaused = false
         paddleWidth = PADDLE_INIT_WIDTH
         paddleX = PADDLE_INIT_X
         balls.clear()
@@ -194,6 +203,24 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        PauseButton(
+            onClick = { isPaused = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(WindowInsets.statusBars.asPaddingValues())
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+
+
+        if (isPaused) {
+            PausePanel(
+                score = score,
+                bestScore = bestScore,
+                onContinue = { isPaused = false },
+                onRestart = { restartGame() }
+            )
+        }
+
         if (isGameOver) {
             GameOverPanel(
                 score = score,
@@ -206,6 +233,11 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     // цикл обновления игры
     LaunchedEffect(Unit) {
         while (true) {
+            delay(16L)
+
+            if (isPaused)
+                continue
+
             // чтобы избежать ConcurrentModificationException новые мячи добавляются только в конце
             // итерации
             val newBalls = mutableListOf<Ball>()
@@ -264,8 +296,6 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             if (blocks.all { it.isDestroyed } || balls.all { it.position.y - BALL_RADIUS > canvasHeight }) {
                 isGameOver = true
             }
-
-            delay(16L)
         }
     }
 
@@ -338,6 +368,120 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PausePanel(
+    score: Int,
+    bestScore: Int,
+    onContinue: () -> Unit,
+    onRestart: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xAA000000))
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .background(
+                    color = Color(0xFF2A2F45),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(32.dp)
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Пауза",
+                    color = Color.Cyan,
+                    fontSize = 35.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    "Ваш счёт: $score",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    "Лучший счёт: $bestScore",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+                Button(
+                    onClick = onContinue,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .width(260.dp),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00FFAA)
+                    )
+                ) {
+                    Text(
+                        "Продолжить",
+                        color = Color.Black,
+                        fontSize = 21.sp
+                    )
+                }
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .width(260.dp),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00FFFF)
+                    )
+                ) {
+                    Text(
+                        "Начать сначала",
+                        color = Color.Black,
+                        fontSize = 21.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PauseButton(onClick: () -> Unit, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .background(Color.Transparent)
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    onClick()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(20.dp)) {
+            val barWidth = 6.dp.toPx()
+            val barHeight = size.height
+            val spacing = 6.dp.toPx()
+
+            // левая палка
+            drawRect(
+                color = Color.White,
+                topLeft = Offset(0f, 0f),
+                size = Size(barWidth, barHeight)
+            )
+            // правая палка
+            drawRect(
+                color = Color.White,
+                topLeft = Offset(barWidth + spacing, 0f),
+                size = Size(barWidth, barHeight)
+            )
         }
     }
 }
