@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,13 +97,16 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
     /*
     * инициализация начального состояния (state) поля
     */
     var score by remember { mutableIntStateOf(0) }
+    val bestScore by ScoreManager.getBestScore(context).collectAsState(initial = 0)
     var isGameOver by remember { mutableStateOf(false) }
 
-    var paddleWidth = PADDLE_INIT_WIDTH
+    var paddleWidth by remember {mutableFloatStateOf(PADDLE_INIT_WIDTH)}
     var canvasWidth by remember { mutableFloatStateOf(0f) }
     var canvasHeight by remember { mutableFloatStateOf(0f) }
     var paddleX by remember { mutableFloatStateOf(PADDLE_INIT_X) }
@@ -191,7 +197,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
         if (isGameOver) {
             GameOverPanel(
                 score = score,
-                bestScore = 0,
+                bestScore = bestScore,
                 onRestart = { restartGame() }
             )
         }
@@ -262,6 +268,13 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             delay(16L)
         }
     }
+
+    // обновление лучшего результата
+    LaunchedEffect(isGameOver) {
+        if (isGameOver && score > bestScore) {
+            ScoreManager.saveBestScore(context, score)
+        }
+    }
 }
 
 @Preview(showBackground = true)
@@ -279,41 +292,51 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
             .fillMaxSize()
             .background(Color(0xAA000000)) // полупрозрачный фон
     ) {
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "Игра окончена",
-                color = Color(0xFFFF7043),
-                fontSize = 40.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Text(
-                "Ваш счёт: $score",
-                color = Color.White,
-                fontSize = 30.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Text(
-                "Лучший счёт: $bestScore",
-                color = Color.White,
-                fontSize = 30.sp,
-                modifier = Modifier.padding(bottom = 20.dp)
-            )
-            Button(
-                onClick = onRestart,
-                modifier = Modifier.padding(top = 8.dp),
-                shape = RectangleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00FFFF)
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .background(
+                    color = Color(0xFF2A2F45),
+                    shape = RoundedCornerShape(24.dp)
                 )
+                .padding(32.dp),
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Начать сначала",
-                    color = Color.Black,
-                    fontSize = 20.sp
+                    "Игра окончена",
+                    color = Color.Cyan,
+                    fontSize = 35.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
+                Text(
+                    "Ваш счёт: $score",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    "Лучший счёт: $bestScore",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier.padding(top = 8.dp),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00FFFF)
+                    )
+                ) {
+                    Text(
+                        "Начать сначала",
+                        color = Color.Black,
+                        fontSize = 21.sp
+                    )
+                }
             }
         }
     }
