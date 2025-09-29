@@ -114,7 +114,7 @@ fun MenuButton(text: String, onClick: () -> Unit, color: Color = Color.Cyan) {
     Button(
         onClick = onClick,
         modifier = Modifier
-            .width(270.dp)
+            .width(280.dp)
             .height(60.dp),
         shape = RectangleShape,
         colors = ButtonDefaults.buttonColors(

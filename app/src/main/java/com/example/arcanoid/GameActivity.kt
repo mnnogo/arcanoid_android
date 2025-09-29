@@ -249,7 +249,11 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             GameOverPanel(
                 score = score,
                 bestScore = bestScore,
-                onRestart = { restartGame() }
+                onRestart = { restartGame() },
+                onMenu = {
+                    val intent = Intent(activity, MainActivity::class.java)
+                    activity?.startActivity(intent)
+                }
             )
         }
     }
@@ -352,7 +356,12 @@ fun ArkanoidGamePreview() {
 
 
 @Composable
-fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
+fun GameOverPanel(
+    score: Int,
+    bestScore: Int,
+    onRestart: () -> Unit,
+    onMenu: () -> Unit
+) {
     Box(
         Modifier
             .fillMaxSize()
@@ -362,8 +371,12 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.Center)
                 .background(
-                    color = Color(0xFF2A2F45),
-                    shape = RoundedCornerShape(24.dp)
+                    color = Color.Black,
+                    shape = RectangleShape
+                )
+                .border(
+                    width = 2.dp,
+                    color = Color.Cyan
                 )
                 .padding(32.dp),
         ) {
@@ -391,15 +404,35 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
                 )
                 Button(
                     onClick = onRestart,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .width(260.dp)
+                        .border(width = 2.dp, color = Color.Green),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00FFFF)
+                        containerColor = Color.Black
                     )
                 ) {
                     Text(
                         "Начать сначала",
-                        color = Color.Black,
+                        color = Color.White,
+                        fontSize = 21.sp
+                    )
+                }
+                Button(
+                    onClick = onMenu,
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .width(260.dp)
+                        .border(width = 2.dp, color = Color.Green),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black
+                    )
+                ) {
+                    Text(
+                        "В меню",
+                        color = Color.White,
                         fontSize = 21.sp
                     )
                 }
@@ -408,14 +441,13 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
     }
 }
 
-@Preview
 @Composable
 fun PausePanel(
-    score: Int = 0,
-    bestScore: Int = 0,
-    onContinue: () -> Unit = {},
-    onRestart: () -> Unit = {},
-    onMenu: () -> Unit = {}
+    score: Int,
+    bestScore: Int,
+    onContinue: () -> Unit,
+    onRestart: () -> Unit,
+    onMenu: () -> Unit
 ) {
     Box(
         Modifier
