@@ -5,8 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -42,12 +42,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.example.arcanoid.ui.theme.ArcanoidTheme
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -60,7 +60,7 @@ const val SCORE_LEFT_PADDING = 50f
 const val PADDLE_INIT_X = 400f
 const val PADDLE_INIT_WIDTH = 200f
 const val PADDLE_HEIGHT = 30f
-const val PADDLE_BOTTOM_PADDING = 400f
+const val PADDLE_BOTTOM_PADDING = 420f
 val PADDLE_COLOR = Color.Cyan
 const val WIDER_PADDLE_BONUS = 50f
 
@@ -69,7 +69,7 @@ const val BALL_RADIUS = 20f
 val BALL_COLOR = Color.Magenta
 val BALL_INIT_POSITION = Offset(500f, 1500f)
 val BALL_INIT_VELOCITY = Offset(12f, -12f)
-const val NEW_BALL_Y_OFFSET = 250f
+const val NEW_BALL_Y_OFFSET = 270f
 
 // блоки
 const val BLOCK_WIDTH = 100f
@@ -78,7 +78,7 @@ const val BLOCK_ROWS = 10
 const val BLOCK_COLUMNS = 7
 const val BLOCK_HORIZONTAL_SPACING = 30f
 const val BLOCK_VERTICAL_SPACING = 30f
-const val BLOCK_MARGIN_TOP = 150f
+const val BLOCK_MARGIN_TOP = 160f
 const val BLOCK_MARGIN_LEFT = 100f
 val NORMAL_BLOCK_COLOR = Color(0xFF00BCD4)
 val BONUS_EXTRA_BALL_BLOCK_COLOR = Color.Magenta
@@ -87,6 +87,9 @@ val BONUS_WIDER_PADDLE_COLOR = Color.Green
 // вероятности появления блоков
 const val CHANCE_EXTRA_BALL_BLOCK = 0.15f
 const val CHANCE_WIDER_PADDLE_BLOCK = 0.1f
+
+// остальное
+const val START_GAME_DELAY_MILLISECONDS = 500L
 
 class GameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,6 +119,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     val bestScore by ScoreManager.getBestScore(context).collectAsState(initial = 0)
     var isGameOver by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
+    var isStarting by remember { mutableStateOf(true) }
 
     var paddleWidth by remember { mutableFloatStateOf(PADDLE_INIT_WIDTH) }
     var canvasWidth by remember { mutableFloatStateOf(0f) }
@@ -128,6 +132,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
         score = 0
         isGameOver = false
         isPaused = false
+        isStarting = true
         paddleWidth = PADDLE_INIT_WIDTH
         paddleX = PADDLE_INIT_X
         balls.clear()
@@ -137,10 +142,15 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.menu_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
         Canvas(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Black)
                 .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
@@ -240,6 +250,12 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
 
             if (isPaused)
                 continue
+
+            if (isStarting) {
+                // пауза 0.5 секунды перед стартом
+                delay(START_GAME_DELAY_MILLISECONDS)
+                isStarting = false
+            }
 
             // чтобы избежать ConcurrentModificationException новые мячи добавляются только в конце
             // итерации
