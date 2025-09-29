@@ -407,7 +407,7 @@ fun GameOverPanel(
                     modifier = Modifier
                         .padding(top = 10.dp)
                         .width(260.dp)
-                        .border(width = 2.dp, color = Color.Green),
+                        .border(width = 2.dp, color = Color.Cyan),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black
@@ -424,7 +424,7 @@ fun GameOverPanel(
                     modifier = Modifier
                         .padding(top = 10.dp)
                         .width(260.dp)
-                        .border(width = 2.dp, color = Color.Green),
+                        .border(width = 2.dp, color = Color.Cyan),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black
@@ -496,7 +496,7 @@ fun PausePanel(
                         .width(260.dp),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Green
+                        containerColor = Color.Cyan
                     )
                 ) {
                     Text(
@@ -510,7 +510,7 @@ fun PausePanel(
                     modifier = Modifier
                         .padding(top = 10.dp)
                         .width(260.dp)
-                        .border(width = 2.dp, color = Color(0xFF57D25B)),
+                        .border(width = 2.dp, color = Color.Cyan),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black
@@ -527,7 +527,7 @@ fun PausePanel(
                     modifier = Modifier
                         .padding(top = 10.dp)
                         .width(260.dp)
-                        .border(width = 2.dp, color = Color(0xFF57D25B)),
+                        .border(width = 2.dp, color = Color.Cyan),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Black

@@ -2,6 +2,7 @@ package com.example.arcanoid
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
@@ -84,8 +85,7 @@ fun MainMenu() {
                             Color(0xFFCA0B00)
                         )
                     )
-                ),
-                color = Color(0xFFC77E00)
+                )
             )
             MenuButton(
                 text = "Играть",
@@ -98,7 +98,8 @@ fun MainMenu() {
             MenuButton(
                 text = "Настройки",
                 onClick = {
-
+                    val intent = Intent(activity, SettingsActivity::class.java)
+                    activity?.startActivity(intent)
                 }
             )
             MenuButton(
