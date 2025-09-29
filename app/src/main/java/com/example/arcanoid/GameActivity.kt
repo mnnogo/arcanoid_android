@@ -128,8 +128,8 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     val balls = remember { mutableStateListOf(Ball( BALL_INIT_POSITION, BALL_INIT_VELOCITY))}
     val blocks = remember { mutableStateListOf<Block>().apply { initializeBlocks(this) } }
 
-    fun restartGame() {
-        score = 0
+    fun restartGame(startingScore: Int = 0) {
+        score = startingScore
         isGameOver = false
         isPaused = false
         isStarting = true
@@ -312,8 +312,13 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
             balls.addAll(newBalls)
 
             // проверка окончания игры
-            if (blocks.all { it.isDestroyed } || balls.all { it.position.y - BALL_RADIUS > canvasHeight }) {
+            if (balls.all { it.position.y - BALL_RADIUS > canvasHeight }) {
                 isGameOver = true
+            }
+
+            // проверка, разрушены ли все блоки
+            if (blocks.all { it.isDestroyed }) {
+                restartGame(score) // перезапуск игры но с сохранением очков
             }
         }
     }
