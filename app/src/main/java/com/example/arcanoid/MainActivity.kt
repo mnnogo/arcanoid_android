@@ -21,7 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -69,14 +71,21 @@ fun MainMenu() {
             Text(
                 text = "ARCANOID",
                 fontFamily = FontFamily(
-                    Font(R.font.bungee_spice_regular)
+                    Font(R.font.bungee_inline_regular)
                 ),
                 fontSize = 58.sp,
                 modifier = Modifier
                     .padding(bottom = 165.dp),
                 style = TextStyle(
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFFFA500),
+                            Color(0xFFCA0B00)
+                        )
+                    )
                 ),
+                color = Color(0xFFC77E00)
             )
             MenuButton(
                 text = "Играть",
@@ -119,8 +128,4 @@ fun MenuButton(text: String, onClick: () -> Unit, color: Color = Color.Cyan) {
             fontSize = 20.sp
         )
     }
-}
-
-fun onPlayClick() {
-
 }

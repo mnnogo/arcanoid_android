@@ -1,17 +1,22 @@
 package com.example.arcanoid
 
+import android.content.Intent
 import android.graphics.Paint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -46,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.arcanoid.ui.theme.ArcanoidTheme
@@ -69,7 +76,7 @@ const val BALL_RADIUS = 20f
 val BALL_COLOR = Color.Magenta
 val BALL_INIT_POSITION = Offset(500f, 1500f)
 val BALL_INIT_VELOCITY = Offset(12f, -12f)
-const val NEW_BALL_Y_OFFSET = 270f
+const val NEW_BALL_Y_OFFSET = 255f
 
 // блоки
 const val BLOCK_WIDTH = 100f
@@ -111,6 +118,7 @@ class GameActivity : ComponentActivity() {
 @Composable
 fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val activity = LocalActivity.current
 
     /*
     * инициализация начального состояния (state) поля
@@ -224,13 +232,16 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                 .padding(horizontal = 16.dp, vertical = 4.dp)
         )
 
-
         if (isPaused) {
             PausePanel(
                 score = score,
                 bestScore = bestScore,
                 onContinue = { isPaused = false },
-                onRestart = { restartGame() }
+                onRestart = { restartGame() },
+                onMenu = {
+                    val intent = Intent(activity, MainActivity::class.java)
+                    activity?.startActivity(intent)
+                }
             )
         }
 
@@ -339,6 +350,7 @@ fun ArkanoidGamePreview() {
     }
 }
 
+
 @Composable
 fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
     Box(
@@ -396,12 +408,14 @@ fun GameOverPanel(score: Int, bestScore: Int, onRestart: () -> Unit) {
     }
 }
 
+@Preview
 @Composable
 fun PausePanel(
-    score: Int,
-    bestScore: Int,
-    onContinue: () -> Unit,
-    onRestart: () -> Unit
+    score: Int = 0,
+    bestScore: Int = 0,
+    onContinue: () -> Unit = {},
+    onRestart: () -> Unit = {},
+    onMenu: () -> Unit = {}
 ) {
     Box(
         Modifier
@@ -412,8 +426,12 @@ fun PausePanel(
             modifier = Modifier
                 .align(Alignment.Center)
                 .background(
-                    color = Color(0xFF2A2F45),
-                    shape = RoundedCornerShape(24.dp)
+                    color = Color.Black,
+                    shape = RectangleShape
+                )
+                .border(
+                    width = 2.dp,
+                    color = Color.Cyan
                 )
                 .padding(32.dp)
         ) {
@@ -446,7 +464,7 @@ fun PausePanel(
                         .width(260.dp),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00FFAA)
+                        containerColor = Color.Green
                     )
                 ) {
                     Text(
@@ -458,16 +476,34 @@ fun PausePanel(
                 Button(
                     onClick = onRestart,
                     modifier = Modifier
-                        .padding(top = 8.dp)
-                        .width(260.dp),
+                        .padding(top = 10.dp)
+                        .width(260.dp)
+                        .border(width = 2.dp, color = Color(0xFF57D25B)),
                     shape = RectangleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00FFFF)
+                        containerColor = Color.Black
                     )
                 ) {
                     Text(
                         "Начать сначала",
-                        color = Color.Black,
+                        color = Color.White,
+                        fontSize = 21.sp
+                    )
+                }
+                Button(
+                    onClick = onMenu,
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .width(260.dp)
+                        .border(width = 2.dp, color = Color(0xFF57D25B)),
+                    shape = RectangleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Black
+                    )
+                ) {
+                    Text(
+                        "В меню",
+                        color = Color.White,
                         fontSize = 21.sp
                     )
                 }
@@ -477,7 +513,7 @@ fun PausePanel(
 }
 
 @Composable
-fun PauseButton(onClick: () -> Unit, modifier: Modifier) {
+fun PauseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(48.dp)
