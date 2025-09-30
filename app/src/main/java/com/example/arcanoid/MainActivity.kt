@@ -40,6 +40,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private lateinit var mediaPlayer: MediaPlayer
 
@@ -54,10 +57,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        mediaPlayer = MediaPlayer.create(applicationContext, R.raw.main_menu_theme).apply {
-            isLooping = true
-            seekTo(5_000)
-            start()
+
+        lifecycleScope.launch {
+            GameSettings.musicVolume = PreferencesManager.getMusicVolume(applicationContext).first()
+            GameSettings.sfxVolume = PreferencesManager.getSfxVolume(applicationContext).first()
+            GameSettings.ballSpeed = PreferencesManager.getBallSpeed(applicationContext).first()
+            GameSettings.chanceExtraBallBlock =
+                PreferencesManager.getChanceExtraBallBlock(applicationContext).first()
+            GameSettings.chanceWiderPaddleBlock =
+                PreferencesManager.getChanceWiderPaddleBlock(applicationContext).first()
+
+            mediaPlayer = MediaPlayer.create(applicationContext, R.raw.main_menu_theme).apply {
+                isLooping = true
+                seekTo(5_000)
+                start()
+                setVolume(GameSettings.musicVolume, GameSettings.musicVolume)
+            }
         }
     }
 

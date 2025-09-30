@@ -71,7 +71,6 @@ const val WIDER_PADDLE_BONUS = 50f
 const val BALL_RADIUS = 20f
 val BALL_COLOR = Color.Magenta
 val BALL_INIT_POSITION = Offset(500f, 1500f)
-val BALL_INIT_VELOCITY = Offset(12f, -12f)
 const val NEW_BALL_Y_OFFSET = 255f
 
 // блоки
@@ -87,15 +86,11 @@ val NORMAL_BLOCK_COLOR = Color(0xFF00BCD4)
 val BONUS_EXTRA_BALL_BLOCK_COLOR = Color.Magenta
 val BONUS_WIDER_PADDLE_COLOR = Color.Green
 
-// вероятности появления блоков
-const val CHANCE_EXTRA_BALL_BLOCK = 0.15f
-const val CHANCE_WIDER_PADDLE_BLOCK = 0.1f
-
 // остальное
 const val START_GAME_DELAY_MILLISECONDS = 500L
 private lateinit var soundPool: SoundPool
-private var brickBreakSound = 0
-private var bounceSound = 0
+private var brickBreakSfx = 0
+private var bounceSoundSfx = 0
 
 class GameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,8 +110,8 @@ class GameActivity : ComponentActivity() {
             .setMaxStreams(5) // одновременно можно проигрывать 5 звуков
             .build()
 
-        brickBreakSound = soundPool.load(this, R.raw.brick_break_sfx, 1)
-        bounceSound = soundPool.load(this, R.raw.bounce_sound_sfx, 2)
+        brickBreakSfx = soundPool.load(this, R.raw.brick_break_sfx, 1)
+        bounceSoundSfx = soundPool.load(this, R.raw.bounce_sound_sfx, 2)
     }
 }
 
@@ -126,21 +121,34 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val activity = LocalActivity.current
 
+    var sfxVolume by remember { mutableFloatStateOf(GameSettings.sfxVolume) }
+
     /*
     * инициализация начального состояния (state) поля
     */
     var score by remember { mutableIntStateOf(0) }
-    val bestScore by ScoreManager.getBestScore(context).collectAsState(initial = 0)
+    val bestScore by PreferencesManager.getBestScore(context).collectAsState(initial = 0)
     var isGameOver by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
     var isStarting by remember { mutableStateOf(true) }
+
+    var chanceExtraBallBlock by remember { mutableFloatStateOf(GameSettings.chanceExtraBallBlock)}
+    var chanceWiderPaddleBlock by remember { mutableFloatStateOf(GameSettings.chanceWiderPaddleBlock)}
+    var ballSpeed by remember { mutableFloatStateOf(GameSettings.ballSpeed) }
 
     var paddleWidth by remember { mutableFloatStateOf(PADDLE_INIT_WIDTH) }
     var canvasWidth by remember { mutableFloatStateOf(0f) }
     var canvasHeight by remember { mutableFloatStateOf(0f) }
     var paddleX by remember { mutableFloatStateOf(PADDLE_INIT_X) }
-    val balls = remember { mutableStateListOf(Ball( BALL_INIT_POSITION, BALL_INIT_VELOCITY))}
-    val blocks = remember { mutableStateListOf<Block>().apply { initializeBlocks(this) } }
+
+    val balls = remember {
+        mutableStateListOf(
+            Ball( BALL_INIT_POSITION, Offset(ballSpeed, -ballSpeed))
+        )
+    }
+    val blocks = remember { mutableStateListOf<Block>().apply {
+        initializeBlocks(this, chanceExtraBallBlock, chanceWiderPaddleBlock) }
+    }
 
     fun restartGame(startingScore: Int = 0) {
         score = startingScore
@@ -150,9 +158,9 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
         paddleWidth = PADDLE_INIT_WIDTH
         paddleX = PADDLE_INIT_X
         balls.clear()
-        balls.add(Ball(BALL_INIT_POSITION, BALL_INIT_VELOCITY))
+        balls.add(Ball(BALL_INIT_POSITION, Offset(ballSpeed, -ballSpeed)))
         blocks.clear()
-        initializeBlocks(blocks)
+        initializeBlocks(blocks, chanceExtraBallBlock, chanceWiderPaddleBlock)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -301,7 +309,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                     ball.position.x <= paddleX + paddleWidth
                 ) {
                     ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
-                    soundPool.play(bounceSound, 1f, 1f, 1, 0, 1f)
+                    soundPool.play(bounceSoundSfx, sfxVolume * 0.8f, sfxVolume * 0.8f, 1, 0, 1f)
                 }
 
                 // столкновение с блоками
@@ -315,7 +323,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                             block.isDestroyed = true
                             ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
                             score++
-                            soundPool.play(brickBreakSound, 1f, 1f, 1, 0, 1f)
+                            soundPool.play(brickBreakSfx, sfxVolume, sfxVolume, 1, 0, 1f)
 
                             // добавление нового мяча при столкновении с бонусным
                             if (block.type == BlockType.BONUS_EXTRA_BALL) {
@@ -349,7 +357,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
     // обновление лучшего результата
     LaunchedEffect(isGameOver) {
         if (isGameOver && score > bestScore) {
-            ScoreManager.saveBestScore(context, score)
+            PreferencesManager.saveBestScore(context, score)
         }
     }
 }
@@ -585,12 +593,16 @@ fun PauseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-fun initializeBlocks(list: MutableList<Block>) {
+fun initializeBlocks(
+    list: MutableList<Block>,
+    chanceExtraBallBlock: Float,
+    chanceWiderPaddleBlock: Float
+) {
     for (row in 0 until BLOCK_ROWS) {
         for (col in 0 until BLOCK_COLUMNS) {
             val type = when {
-                Random.nextFloat() < CHANCE_EXTRA_BALL_BLOCK -> BlockType.BONUS_EXTRA_BALL
-                Random.nextFloat() < CHANCE_WIDER_PADDLE_BLOCK -> BlockType.BONUS_WIDER_PADDLE
+                Random.nextFloat() < chanceExtraBallBlock -> BlockType.BONUS_EXTRA_BALL
+                Random.nextFloat() < chanceWiderPaddleBlock -> BlockType.BONUS_WIDER_PADDLE
                 else -> BlockType.NORMAL
             }
             list.add(
