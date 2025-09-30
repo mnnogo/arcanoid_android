@@ -2,12 +2,12 @@ package com.example.arcanoid
 
 import android.content.Intent
 import android.graphics.Paint
+import android.media.SoundPool
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,7 +16,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
@@ -41,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -52,7 +49,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.arcanoid.ui.theme.ArcanoidTheme
@@ -97,6 +93,9 @@ const val CHANCE_WIDER_PADDLE_BLOCK = 0.1f
 
 // остальное
 const val START_GAME_DELAY_MILLISECONDS = 500L
+private lateinit var soundPool: SoundPool
+private var brickBreakSound = 0
+private var bounceSound = 0
 
 class GameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,6 +110,13 @@ class GameActivity : ComponentActivity() {
                 }
             }
         }
+
+        soundPool = SoundPool.Builder()
+            .setMaxStreams(5) // одновременно можно проигрывать 5 звуков
+            .build()
+
+        brickBreakSound = soundPool.load(this, R.raw.brick_break_sfx, 1)
+        bounceSound = soundPool.load(this, R.raw.bounce_sound_sfx, 2)
     }
 }
 
@@ -295,6 +301,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                     ball.position.x <= paddleX + paddleWidth
                 ) {
                     ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
+                    soundPool.play(bounceSound, 1f, 1f, 1, 0, 1f)
                 }
 
                 // столкновение с блоками
@@ -308,6 +315,7 @@ fun ArkanoidGameScreen(modifier: Modifier = Modifier) {
                             block.isDestroyed = true
                             ball.velocity = ball.velocity.copy(y = -ball.velocity.y)
                             score++
+                            soundPool.play(brickBreakSound, 1f, 1f, 1, 0, 1f)
 
                             // добавление нового мяча при столкновении с бонусным
                             if (block.type == BlockType.BONUS_EXTRA_BALL) {
@@ -353,7 +361,6 @@ fun ArkanoidGamePreview() {
         ArkanoidGameScreen()
     }
 }
-
 
 @Composable
 fun GameOverPanel(

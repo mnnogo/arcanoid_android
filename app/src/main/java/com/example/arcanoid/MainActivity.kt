@@ -1,6 +1,7 @@
 package com.example.arcanoid
 
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -39,6 +41,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private lateinit var mediaPlayer: MediaPlayer
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +50,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             MainMenu()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mediaPlayer = MediaPlayer.create(applicationContext, R.raw.main_menu_theme).apply {
+            isLooping = true
+            seekTo(5_000)
+            start()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        mediaPlayer.stop()
     }
 }
 
@@ -104,7 +122,7 @@ fun MainMenu() {
             )
             MenuButton(
                 text = "Выйти",
-                onClick = { activity?.finish() }
+                onClick = { activity?.finishAffinity() }
             )
         }
     }
